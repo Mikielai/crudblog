@@ -7,16 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updatePost } from "@/lib/actions";
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
-
-import EditPostForm from "@/components/EditPostForm";
-import { db } from "@/lib/db";
+import { useAuth } from "@clerk/nextjs"; // Use client-side auth
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 interface EditPageProps {
-  params: Promise<{ id: string }> // Changed from { id: string } to Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }
 
 interface Post {
@@ -27,41 +26,45 @@ interface Post {
   authorId: string;
 }
 
-export default async function EditPage({ params }: EditPageProps) {
+export default function EditPage({ params }: EditPageProps) {
   const [title, setTitle] = useState<string>("");
   const [content, setContent] = useState<string>("");
   const [image, setImage] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [post, setPost] = useState<Post | null>(null);
-  const { userId, isLoaded, isSignedIn } = auth();
-  
+  const { userId, isSignedIn, isLoaded } = useAuth(); // Use client-side auth
+  const router = useRouter();
+
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
-      redirect("/");
+      router.push("/sign-in");
     }
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded, isSignedIn, router]);
 
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        // Await the params in Next.js 15
         const { id } = await params;
 
-        const post = await db.post.findUnique({
-          where: { id },
-          include: {
-            author: true,
-          },
-        });
+        // Use API route instead of direct database access
+        const response = await fetch(`/api/posts/${id}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch post");
+        }
+
+        const data = await response.json();
+        const post = data.post;
 
         if (!post) {
-          redirect("/");
+          router.push("/");
+          return;
         }
 
         // Check if user owns the post
         if (post.authorId !== userId) {
-          redirect("/");
+          router.push("/");
+          return;
         }
 
         setPost(post);
@@ -71,16 +74,16 @@ export default async function EditPage({ params }: EditPageProps) {
       } catch (error) {
         console.error('Error fetching post:', error);
         toast.error("Post not found");
-        redirect("/");
+        router.push("/");
       } finally {
         setIsLoading(false);
       }
     };
 
-    if (userId && params) {
+    if (userId && isSignedIn) {
       fetchPost();
     }
-  }, [userId, params]);
+  }, [userId, isSignedIn, params, router]);
 
   if (!isLoaded || isLoading) {
     return (
@@ -110,7 +113,7 @@ export default async function EditPage({ params }: EditPageProps) {
       const result = await updatePost(post.id, { title, content, image });
       if (result.success) {
         toast.success("Post updated successfully!");
-        redirect("/dashboard");
+        router.push("/dashboard");
       } else {
         toast.error(`Failed to update post: ${result.message || 'Unknown error'}`);
       }
