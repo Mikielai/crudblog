@@ -19,6 +19,7 @@ export default function RichTextEditor({
 }: RichTextEditorProps) {
   const isEditable = editable ?? true;
 
+  
   const editor = useEditor({
     editable: isEditable,
     extensions: [
