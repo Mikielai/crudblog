@@ -1,3 +1,4 @@
+"use client";
 
 import Container from "@/components/container";
 import ImageUpload from "@/components/ImageUpload";
@@ -9,7 +10,7 @@ import { updatePost } from "@/lib/actions";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useAuth } from "@clerk/nextjs"; // Use client-side auth
+import { useAuth } from "@clerk/nextjs";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
