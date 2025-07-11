@@ -1,27 +1,24 @@
-import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
 
+// Fix: Update the params type for Next.js 15
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Await the params in Next.js 15
+    const { id } = await params;
+
     const comments = await db.comment.findMany({
       where: {
-        postId: params.id,
+        postId: id,
       },
       include: {
-        author: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            profileimage: true,
-          },
-        },
+        author: true,
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
     });
 
@@ -29,7 +26,26 @@ export async function GET(
   } catch (error) {
     console.error("Error fetching comments:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Failed to fetch comments" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // Await the params in Next.js 15
+    const { id } = await params;
+    const body = await request.json();
+
+    // Your POST logic here...
+  } catch (error) {
+    console.error("Error creating comment:", error);
+    return NextResponse.json(
+      { error: "Failed to create comment" },
       { status: 500 }
     );
   }
