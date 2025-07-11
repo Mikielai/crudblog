@@ -7,6 +7,8 @@ import { notFound } from "next/navigation";
 import { formatDate } from "@/lib/utils";
 import DOMPurify from "isomorphic-dompurify";
 import CommentsSection from "@/components/CommentsSection";
+import { auth } from "@clerk/nextjs/server";
+import { SignInButton } from "@clerk/nextjs";
 
 interface PostPageProps {
   params: {
@@ -15,6 +17,8 @@ interface PostPageProps {
 }
 
 export default async function PostPage({ params }: PostPageProps) {
+  const { userId } = await auth();
+  
   const post = await db.post.findUnique({
     where: {
       id: params.id,
@@ -89,26 +93,65 @@ export default async function PostPage({ params }: PostPageProps) {
 
         <div className="prose prose-lg max-w-none">
           {post.content ? (
-            <div
-              dangerouslySetInnerHTML={{
-                __html: DOMPurify.sanitize(post.content, {
-                  ALLOWED_TAGS: [
-                    'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-                    'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'a', 'img'
-                  ],
-                  ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class']
-                })
-              }}
-            />
+            userId ? (
+              // Full content for authenticated users
+              <div
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.sanitize(post.content, {
+                    ALLOWED_TAGS: [
+                      'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+                      'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'a', 'img'
+                    ],
+                    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class']
+                  })
+                }}
+              />
+            ) : (
+              // Preview for non-authenticated users
+              <div>
+                <div
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(post.content.substring(0, 300) + "...", {
+                      ALLOWED_TAGS: [
+                        'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+                        'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'a', 'img'
+                      ],
+                      ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class']
+                    })
+                  }}
+                />
+                <div className="mt-8 p-6 bg-muted rounded-lg text-center">
+                  <p className="text-muted-foreground mb-4">
+                    Sign in to read the full article
+                  </p>
+                  <SignInButton mode="modal">
+                    <Button>Sign In to Continue Reading</Button>
+                  </SignInButton>
+                </div>
+              </div>
+            )
           ) : (
             <p className="text-muted-foreground italic">No content available.</p>
           )}
         </div>
 
-        <CommentsSection 
-          postId={post.id} 
-          initialComments={post.comments || []} 
-        />
+        {userId && (
+          <CommentsSection 
+            postId={post.id} 
+            initialComments={post.comments || []} 
+          />
+        )}
+
+        {!userId && (
+          <div className="mt-8 p-6 bg-muted rounded-lg text-center">
+            <p className="text-muted-foreground mb-4">
+              Sign in to view and post comments
+            </p>
+            <SignInButton mode="modal">
+              <Button variant="outline">Sign In</Button>
+            </SignInButton>
+          </div>
+        )}
       </article>
     </Container>
   );
