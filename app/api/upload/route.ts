@@ -1,7 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
-import { writeFile } from "fs/promises";
+import { writeFile, mkdir } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
+import { existsSync } from "fs";
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,16 +50,16 @@ export async function POST(request: NextRequest) {
     const uploadsDir = path.join(process.cwd(), "public", "uploads");
     
     try {
+      if (!existsSync(uploadsDir)) {
+        await mkdir(uploadsDir, { recursive: true });
+      }
       await writeFile(path.join(uploadsDir, filename), buffer);
     } catch (error) {
-      // If directory doesn't exist, create it
-      const fs = require("fs");
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-        await writeFile(path.join(uploadsDir, filename), buffer);
-      } else {
-        throw error;
-      }
+      console.error("File write error:", error);
+      return NextResponse.json(
+        { error: "Failed to save file" },
+        { status: 500 }
+      );
     }
 
     // Return the public URL
