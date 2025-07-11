@@ -7,17 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updatePost } from "@/lib/actions";
-import { useAuth } from "@clerk/nextjs";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import EditPostForm from "@/components/EditPostForm";
+import { db } from "@/lib/db";
+
 interface EditPageProps {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }> // Changed from { id: string } to Promise<{ id: string }>
 }
 
 interface Post {
@@ -28,55 +27,60 @@ interface Post {
   authorId: string;
 }
 
-export default function EditPage({ params }: EditPageProps) {
+export default async function EditPage({ params }: EditPageProps) {
   const [title, setTitle] = useState<string>("");
   const [content, setContent] = useState<string>("");
   const [image, setImage] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [post, setPost] = useState<Post | null>(null);
-  const { userId, isLoaded, isSignedIn } = useAuth();
-  const router = useRouter();
-
+  const { userId, isLoaded, isSignedIn } = auth();
+  
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
-      router.push("/");
+      redirect("/");
     }
-  }, [isLoaded, isSignedIn, router]);
+  }, [isLoaded, isSignedIn]);
 
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        const response = await fetch(`/api/posts/${params.id}`);
-        if (!response.ok) {
-          throw new Error('Post not found');
+        // Await the params in Next.js 15
+        const { id } = await params;
+
+        const post = await db.post.findUnique({
+          where: { id },
+          include: {
+            author: true,
+          },
+        });
+
+        if (!post) {
+          redirect("/");
         }
-        const postData = await response.json();
-        
-        // Check if user owns this post
-        if (postData.authorId !== userId) {
-          toast.error("You don't have permission to edit this post");
-          router.push("/dashboard");
-          return;
+
+        // Check if user owns the post
+        if (post.authorId !== userId) {
+          redirect("/");
         }
-        
-        setPost(postData);
-        setTitle(postData.title);
-        setContent(postData.content || "");
-        setImage(postData.image || "");
+
+        setPost(post);
+        setTitle(post.title);
+        setContent(post.content || "");
+        setImage(post.image || "");
       } catch (error) {
         console.error('Error fetching post:', error);
         toast.error("Post not found");
-        router.push("/dashboard");
+        redirect("/");
       } finally {
         setIsLoading(false);
       }
     };
 
-    if (userId && params.id) {
+    if (userId && params) {
       fetchPost();
     }
-  }, [userId, params.id, router]);
+  }, [userId, params]);
 
   if (!isLoaded || isLoading) {
     return (
@@ -106,7 +110,7 @@ export default function EditPage({ params }: EditPageProps) {
       const result = await updatePost(post.id, { title, content, image });
       if (result.success) {
         toast.success("Post updated successfully!");
-        router.push("/dashboard");
+        redirect("/dashboard");
       } else {
         toast.error(`Failed to update post: ${result.message || 'Unknown error'}`);
       }
