@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react"; // Remove useEffect from this line
 import CommentForm from "./CommentForm";
 import CommentList from "./CommentList";
 

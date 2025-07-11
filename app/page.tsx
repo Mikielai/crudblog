@@ -1,8 +1,4 @@
-
-import Image from "next/image";
-import { db } from '@/lib/db'
-import { syncUserUpsert } from '@/lib/sync-user-upsert'
-
+import { db } from "@/lib/db";
 import BlogPostList from "@/components/BlogPostList";
 import Container from "@/components/container";
 
