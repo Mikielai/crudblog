@@ -30,7 +30,7 @@ model Post {
   id        String   @id @default(cuid())
   title     String
   content   String?
-  image     String?  // URL to the uploaded image
+  image     String?  
   published Boolean  @default(false)
   authorId  String
   author    User     @relation(fields: [authorId], references: [id])
