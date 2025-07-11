@@ -83,7 +83,8 @@ export async function generateMetadata({ params }: PostPageProps) {
       title: post.title,
       description: post.content?.substring(0, 160) || 'Read this blog post',
     };
-  } catch (error) {
+  } catch {
+    // Remove the 'error' parameter since we're not using it
     return {
       title: 'Post Not Found',
     };
