@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Container from "@/components/container";
-import BlogPostList from "@/components/BlogPostList";
+import BlogPost from "@/components/BlogPost"; // ✅ Make sure this import is correct
 import CommentsSection from "@/components/CommentsSection";
 
 // Fix: Update the interface for Next.js 15
@@ -36,18 +36,13 @@ export default async function PostPage({ params }: PostPageProps) {
       },
     });
 
-    if (!post) {
-      notFound();
-    }
-
-    // Only show published posts to non-authors
-    if (!post.published) {
+    if (!post || !post.published) {
       notFound();
     }
 
     return (
       <Container>
-        <BlogPostList posts={[post]} />
+        <BlogPost post={post} />
         <CommentsSection 
           postId={post.id} 
           initialComments={post.comments} 
