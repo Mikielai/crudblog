@@ -2,11 +2,19 @@
 import Image from "next/image";
 import { db } from '@/lib/db'
 import { syncUserUpsert } from '@/lib/sync-user-upsert'
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 
 import BlogPostList from "@/components/BlogPostList";
 import Container from "@/components/container";
 
 export default async function Home() {
+  const { userId } = await auth();
+  
+  if (!userId) {
+    redirect("/sign-in");
+  }
+
   try {
     const posts = await db.post.findMany({
       where: {
