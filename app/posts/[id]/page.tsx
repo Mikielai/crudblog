@@ -1,158 +1,91 @@
 import { db } from "@/lib/db";
-import Container from "@/components/container";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { formatDate } from "@/lib/utils";
-import DOMPurify from "isomorphic-dompurify";
+import Container from "@/components/container";
+import BlogPost from "@/components/BlogPost";
 import CommentsSection from "@/components/CommentsSection";
-import { auth } from "@clerk/nextjs/server";
-import { SignInButton } from "@clerk/nextjs";
 
+// Fix: Update the interface for Next.js 15
 interface PostPageProps {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }>; // Changed from { id: string } to Promise<{ id: string }>
 }
 
 export default async function PostPage({ params }: PostPageProps) {
-  const { userId } = await auth();
-  
-  const post = await db.post.findUnique({
-    where: {
-      id: params.id,
-    },
-    include: {
-      author: true,
-      comments: {
-        include: {
-          author: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              profileimage: true,
-            },
+  try {
+    // Await the params in Next.js 15
+    const { id } = await params;
+
+    const post = await db.post.findUnique({
+      where: {
+        id: id,
+      },
+      include: {
+        author: true,
+        comments: {
+          include: {
+            author: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
           },
         },
-        orderBy: {
-          createdAt: 'desc',
+        _count: {
+          select: {
+            comments: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  if (!post) {
+    if (!post) {
+      notFound();
+    }
+
+    // Only show published posts to non-authors
+    if (!post.published) {
+      notFound();
+    }
+
+    return (
+      <Container>
+        <BlogPost post={post} />
+        <CommentsSection 
+          postId={post.id} 
+          initialComments={post.comments} 
+        />
+      </Container>
+    );
+  } catch (error) {
+    console.error("Error fetching post:", error);
     notFound();
   }
+}
 
-  return (
-    <Container>
-      <div className="mb-6">
-        <Link href="/">
-          <Button variant="outline" size="sm">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Posts
-          </Button>
-        </Link>
-      </div>
+// Generate metadata for SEO
+export async function generateMetadata({ params }: PostPageProps) {
+  try {
+    const { id } = await params;
+    
+    const post = await db.post.findUnique({
+      where: { id },
+      select: {
+        title: true,
+        content: true,
+      },
+    });
 
-      <article className="max-w-4xl mx-auto">
-        <header className="mb-8">
-          <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
-          <div className="flex items-center gap-4 text-muted-foreground">
-            <div className="flex items-center gap-2">
-              {post.author.profileimage && (
-                <img
-                  src={post.author.profileimage}
-                  alt={`${post.author.firstName} ${post.author.lastName}`}
-                  className="w-8 h-8 rounded-full"
-                />
-              )}
-              <span className="font-medium">
-                {post.author.firstName} {post.author.lastName}
-              </span>
-            </div>
-            <span>•</span>
-            <time dateTime={post.createdAt.toISOString()}>
-              {formatDate(post.createdAt)}
-            </time>
-          </div>
-        </header>
+    if (!post) {
+      return {
+        title: 'Post Not Found',
+      };
+    }
 
-        {post.image && (
-          <div className="mb-8">
-            <img
-              src={post.image}
-              alt={post.title}
-              className="w-full h-64 md:h-96 object-cover rounded-lg shadow-lg"
-            />
-          </div>
-        )}
-
-        <div className="prose prose-lg max-w-none">
-          {post.content ? (
-            userId ? (
-              // Full content for authenticated users
-              <div
-                dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(post.content, {
-                    ALLOWED_TAGS: [
-                      'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-                      'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'a', 'img'
-                    ],
-                    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class']
-                  })
-                }}
-              />
-            ) : (
-              // Preview for non-authenticated users
-              <div>
-                <div
-                  dangerouslySetInnerHTML={{
-                    __html: DOMPurify.sanitize(post.content.substring(0, 300) + "...", {
-                      ALLOWED_TAGS: [
-                        'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-                        'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'a', 'img'
-                      ],
-                      ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class']
-                    })
-                  }}
-                />
-                <div className="mt-8 p-6 bg-muted rounded-lg text-center">
-                  <p className="text-muted-foreground mb-4">
-                    Sign in to read the full article
-                  </p>
-                  <SignInButton mode="modal">
-                    <Button>Sign In to Continue Reading</Button>
-                  </SignInButton>
-                </div>
-              </div>
-            )
-          ) : (
-            <p className="text-muted-foreground italic">No content available.</p>
-          )}
-        </div>
-
-        {userId && (
-          <CommentsSection 
-            postId={post.id} 
-            initialComments={post.comments || []} 
-          />
-        )}
-
-        {!userId && (
-          <div className="mt-8 p-6 bg-muted rounded-lg text-center">
-            <p className="text-muted-foreground mb-4">
-              Sign in to view and post comments
-            </p>
-            <SignInButton mode="modal">
-              <Button variant="outline">Sign In</Button>
-            </SignInButton>
-          </div>
-        )}
-      </article>
-    </Container>
-  );
+    return {
+      title: post.title,
+      description: post.content?.substring(0, 160) || 'Read this blog post',
+    };
+  } catch (error) {
+    return {
+      title: 'Post Not Found',
+    };
+  }
 }
