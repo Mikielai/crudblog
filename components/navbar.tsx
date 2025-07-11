@@ -14,16 +14,12 @@ export default function Navbar() {
                 </Link>
                 <div className="flex items-center gap-4">
                     <SignedIn>
-
-                        <Link href = "/dashboard">
-                            
+                        <Link href="/dashboard">
                             <Button>
                                 Dashboard
                             </Button>
                         </Link>
                         <UserButton />
-                            
-                        
                     </SignedIn>
                     <SignedOut>
                         <SignInButton >
