@@ -6,48 +6,58 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "postgresql"  // ✅ Make sure this is postgresql
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id           String   @id // Clerk user ID
-  email        String   @unique
+  id           String @id
+  email        String @unique
   firstName    String?
   lastName     String?
   profileimage String?
-  posts        Post[]
-  comments     Comment[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  posts    Post[]
+  comments Comment[]
+
+  @@map("users")
 }
 
 model Post {
   id        String   @id @default(cuid())
   title     String
   content   String?
-  image     String?  
+  image     String?
   published Boolean  @default(false)
-  authorId  String
-  author    User     @relation(fields: [authorId], references: [id])
-  comments  Comment[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId String
+
+  comments Comment[]
+
+  @@map("posts")
 }
 
 model Comment {
-  id       String   @id @default(cuid())
-  content  String
-  postId   String
-  post     Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  authorId String
-  author   User     @relation(fields: [authorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id        String   @id @default(cuid())
+  content   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId String
+
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId String
+
+  @@map("comments")
 }
 
 
