@@ -44,9 +44,9 @@ export async function createPost(data: CreatePostInput) {
             }
           });
           console.log('User created in database:', dbUser.id);
-        } catch (userError: any) {
+        } catch (userError: unknown) {
           console.error('Error creating user:', userError);
-          return { success: false, message: `Failed to create user in database: ${userError.message || 'Unknown database error'}` };
+          return { success: false, message: `Failed to create user in database: ${userError instanceof Error ? userError.message : 'Unknown database error'}` };
         }
       }
     } else {
