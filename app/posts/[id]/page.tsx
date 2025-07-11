@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Container from "@/components/container";
-import BlogPost from "@/components/BlogPost";
+import BlogPostList from "@/components/BlogPostList";
 import CommentsSection from "@/components/CommentsSection";
 
 // Fix: Update the interface for Next.js 15
@@ -47,7 +47,7 @@ export default async function PostPage({ params }: PostPageProps) {
 
     return (
       <Container>
-        <BlogPost post={post} />
+        <BlogPostList posts={[post]} />
         <CommentsSection 
           postId={post.id} 
           initialComments={post.comments} 
